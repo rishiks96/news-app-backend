@@ -22,5 +22,5 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add crypto_latest_news.json
-          git commit -m "Auto update news.json" || echo "No changes"
+          git commit -m "Auto update crypto_latest_news.json" || echo "No changes"
           git push
