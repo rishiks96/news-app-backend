@@ -2,4 +2,4 @@ requests
 beautifulsoup4
 pandas
 selenium
-webdriver_manager.microsoft
+webdriver_manager
