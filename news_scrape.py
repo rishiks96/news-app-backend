@@ -1,8 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta, timezone
-import nltk
-from nltk.tokenize import sent_tokenize
 import time
 import sys
 import re
@@ -1081,3 +1079,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
