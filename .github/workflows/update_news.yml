@@ -1,5 +1,8 @@
 name: Update News JSON
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
 
@@ -13,6 +16,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
       - name: Run script
         run: python news_scrape.py
