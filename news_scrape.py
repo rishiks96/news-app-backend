@@ -1,7 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta, timezone
-import openpyxl
 import nltk
 from nltk.tokenize import sent_tokenize
 import time
@@ -1080,4 +1079,5 @@ def main():
     print("="*60)
 
 if __name__ == "__main__":
+
     main()
