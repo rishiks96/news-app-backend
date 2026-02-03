@@ -188,6 +188,17 @@ def remove_boilerplate(text):
     """Remove boilerplate - PARAGRAPH-BASED APPROACH"""
     if not text:
         return text
+
+    boilerplate_regex = [
+        r'log in to access.*?(?=\.)',
+        r'sign up to get started.*?(?=\.)',
+        r'some of the data collected.*?(?=\.)',
+        r'is a certified.*?journalist.*?(?=\.)',
+        r'shares the latest.*?blockchain.*?(?=\.)',
+    ]
+
+    for pattern in boilerplate_regex:
+        text = re.sub(pattern, '', text, flags=re.IGNORECASE | re.DOTALL)
     
     # Split by double newlines or periods followed by newlines
     import re
@@ -206,7 +217,7 @@ def remove_boilerplate(text):
         para_lower = paragraph.lower().strip()
         
         # Skip short paragraphs
-        if len(paragraph.strip()) < 50:
+        if len(paragraph.strip()) < 120:
             continue
         
         # Skip if contains boilerplate
@@ -222,6 +233,13 @@ def remove_boilerplate(text):
     # Split into sentences and take first 10
     sentences = result.split('. ')
     sentences = [s.strip() for s in sentences if len(s.strip()) > 30][:10]
+    sentences = [
+    s for s in sentences
+    if not re.search(
+        r'log in|sign up|data collected|journalist|advertising|privacy',
+        s.lower()
+    )
+    ]
     
     return '. '.join(sentences) + '.' if sentences else text
 
@@ -1104,4 +1122,5 @@ def main():
     print("="*60)
 
 if __name__ == "__main__":
+
     main()
