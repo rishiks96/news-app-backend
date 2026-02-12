@@ -4,3 +4,4 @@ pandas
 selenium
 webdriver_manager
 nltk
+openpyxl
