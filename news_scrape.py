@@ -38,6 +38,7 @@ sites = [
     ("The Block", "https://www.theblock.co/latest-crypto-news"),
     ("Decrypt", "https://decrypt.co/news"),
     ("Cointelegraph", "https://cointelegraph.com/news")
+    ("CryptoSlate", "https://cryptoslate.com/")
 ]
 
 # Get articles from the last 48 hours
@@ -1068,6 +1069,102 @@ def scrape_cointelegraph(driver):
     
     return results
 
+def scrape_cryptoslate(driver):
+    url = "https://cryptoslate.com/"
+    print(f"    Fetching page with Selenium...")
+    
+    html = fetch_html_selenium(url, driver, wait_time=5)
+    if not html:
+        print(f"    ✗ Failed to fetch page")
+        return []
+    
+    print(f"    ✓ Fetched page: {len(html)} characters")
+    soup = BeautifulSoup(html, "html.parser")
+    results = []
+    
+    # Find article cards
+    articles = soup.find_all('article', class_='news-card')
+    print(f"    Found {len(articles)} article containers")
+    
+    if len(articles) == 0:
+        print(f"    ✗ No articles found!")
+        return []
+    
+    print(f"    Processing {min(len(articles), 10)} articles...")
+    processed = 0
+    
+    for i, article in enumerate(articles):
+        if processed >= 10:
+            break
+        
+        # Find the article link
+        link_tag = article.find('a', class_='news-card__link')
+        if not link_tag:
+            continue
+        
+        link = link_tag.get('href', '')
+        if not link:
+            continue
+        
+        # Get title from h2
+        title_tag = article.find('h2', class_='news-card__title')
+        if not title_tag:
+            continue
+        
+        title = title_tag.get_text(strip=True)
+        if not title or len(title) < 10:
+            continue
+        
+        print(f"      Article {processed+1}: {title[:50]}...")
+        
+        # Get date from time tag
+        time_tag = article.find('span', class_='news-card__time')
+        date = None
+        if time_tag:
+            time_text = time_tag.get_text(strip=True)
+            # CryptoSlate uses relative times like "4 hours ago"
+            # For simplicity, we'll accept recent articles
+            print(f"        Date: {time_text}")
+        
+        try:
+            time.sleep(2)  # Be polite
+            article_html = fetch_html_selenium(link, driver, wait_time=3)
+            if not article_html:
+                print(f"        ✗ Failed to fetch article")
+                continue
+            
+            article_soup = BeautifulSoup(article_html, "html.parser")
+            
+            # Get better title from article page
+            h1 = article_soup.find("h1", class_="magazine-hero__title")
+            if h1:
+                title = h1.get_text(strip=True)
+            
+            # Get article text from paragraphs in the main content
+            post_div = article_soup.find("div", class_="post")
+            if post_div:
+                paragraphs = post_div.find_all("p")
+                text = " ".join(p.get_text(" ", strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 20)
+            else:
+                # Fallback: get all paragraphs
+                paragraphs = article_soup.find_all("p")
+                text = " ".join(p.get_text(" ", strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 20)
+            
+            if len(text) < 100:
+                print(f"        ✗ Insufficient content ({len(text)} chars)")
+                continue
+            
+            # Accept recent articles (CryptoSlate uses relative times)
+            results.append((title, "CryptoSlate", text))
+            print(f"        ✓ ADDED")
+            processed += 1
+                
+        except Exception as e:
+            print(f"        Error: {e}")
+            continue
+    
+    return results
+
 # ------------------------
 # Main Execution
 # ------------------------
@@ -1106,7 +1203,8 @@ def main():
             ("Crypto.News", lambda d: scrape_crypto_news(d)),
             ("The Block", lambda d: scrape_theblock(d)),
             ("Decrypt", lambda d: scrape_decrypt(d)),
-            ("Cointelegraph", lambda d: scrape_cointelegraph(d)) 
+            ("Cointelegraph", lambda d: scrape_cointelegraph(d))
+            ("CryptoSlate", lambda d: scrape_cryptoslate(d)) 
         ]
         
         for name, scraper_func in scrapers:
