@@ -416,7 +416,7 @@ def scrape_coinpedia(driver):
                 
                 # For Coinpedia, accept top 10 articles even without date
                 if date is None or is_recent(date):
-                    results.append((title, "Coinpedia", text))
+                    results.append((title, "Coinpedia", text, date))
                     print(f"        ✓ ADDED")
                     processed += 1
                 else:
@@ -577,7 +577,7 @@ def scrape_coindesk(driver):
             text = " ".join(p.get_text(" ", strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 20)
             
             if is_recent(date) and len(text) > 100:
-                results.append((title, "CoinDesk", text))
+                results.append((title, "CoinDesk", text, date))
                 print(f"        ✓ ADDED")
             elif not is_recent(date):
                 print(f"        ✗ Too old")
@@ -663,7 +663,7 @@ def scrape_crypto_news(driver):
             text = " ".join(p.get_text(" ", strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 20)
             
             if len(text) > 100:
-                results.append((title, "Crypto.News", text))
+                results.append((title, "Crypto.News", text, date))
                 print(f"        ✓ ADDED")
                 processed += 1
             else:
@@ -747,7 +747,7 @@ def scrape_theblock(driver):
                 print(f"        Date: {date if date else 'Unknown'}")
                 
                 if date is None or is_recent(date):
-                    results.append((title, "The Block", text))
+                    results.append((title, "The Block", text, date))
                     print(f"        ✓ ADDED")
                     processed += 1
                 else:
@@ -819,7 +819,7 @@ def scrape_theblock(driver):
             print(f"        Date: {date if date else 'Unknown'}")
             
             if date is None or is_recent(date):
-                results.append((title, "The Block", text))
+                results.append((title, "The Block", text, date))
                 print(f"        ✓ ADDED")
                 processed += 1
             else:
@@ -924,7 +924,7 @@ def scrape_decrypt(driver):
             
             # Accept if date is None or recent
             if date is None or is_recent(date):
-                results.append((title, "Decrypt", text))
+                results.append((title, "Decrypt", text, date))
                 print(f"        ✓ ADDED")
                 processed += 1
             else:
@@ -1057,7 +1057,7 @@ def scrape_cointelegraph(driver):
             
             # Accept if date is None or recent
             if date is None or is_recent(date):
-                results.append((title, "Cointelegraph", text))
+                results.append((title, "Cointelegraph", text, date))
                 print(f"        ✓ ADDED")
                 processed += 1
             else:
@@ -1155,7 +1155,7 @@ def scrape_cryptoslate(driver):
                 continue
             
             # Accept recent articles (CryptoSlate uses relative times)
-            results.append((title, "CryptoSlate", text))
+            results.append((title, "CryptoSlate", text, date))
             print(f"        ✓ ADDED")
             processed += 1
                 
@@ -1236,22 +1236,29 @@ def main():
     # Build JSON structure
     articles_data = []
 
-    for title, site, full_text in all_articles:
-        try:
-            # Clean all text
-            clean_title = clean_text(title)
-            clean_site = clean_text(site)
-            summary = llm_explain_summary(title, full_text)
-            
-            # Create article object
-            article_obj = {
-                "title": clean_title,
-                "source": clean_site,
-                "summary": summary,
-                
-            }
-            
-            articles_data.append(article_obj)
+    for title, site, full_text, pub_date in all_articles:
+    try:
+        # Clean all text
+        clean_title = clean_text(title)
+        clean_site = clean_text(site)
+        summary = summarize_text(full_text)
+        
+        # Format date
+        if pub_date:
+            date_str = pub_date.strftime("%Y-%m-%d %H:%M:%S UTC") if isinstance(pub_date, datetime) else str(pub_date)
+        else:
+            date_str = None
+        
+        # Create article object
+        article_obj = {
+            "title": clean_title,
+            "source": clean_site,
+            "published_date": date_str,
+            "summary": summary,
+            "full_text": clean_text(full_text[:5000])
+        }
+        
+        articles_data.append(article_obj)
         except Exception as e:
             print(f"Warning: Failed to add article to JSON: {title[:50]}... Error: {e}")
             continue
@@ -1286,4 +1293,5 @@ def main():
     update_excel_file(all_articles, "titles.xlsx")
 
 if __name__ == "__main__":
+
     main()
