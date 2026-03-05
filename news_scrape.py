@@ -1237,31 +1237,31 @@ def main():
     articles_data = []
 
     for title, site, full_text, pub_date in all_articles:
-    try:
-        # Clean all text
-        clean_title = clean_text(title)
-        clean_site = clean_text(site)
-        summary = summarize_text(full_text)
-        
-        # Format date
-        if pub_date:
-            date_str = pub_date.strftime("%Y-%m-%d %H:%M:%S UTC") if isinstance(pub_date, datetime) else str(pub_date)
-        else:
-            date_str = None
-        
-        # Create article object
-        article_obj = {
-            "title": clean_title,
-            "source": clean_site,
-            "published_date": date_str,
-            "summary": summary,
-            "full_text": clean_text(full_text[:5000])
-        }
-        
-        articles_data.append(article_obj)
-        except Exception as e:
-            print(f"Warning: Failed to add article to JSON: {title[:50]}... Error: {e}")
-            continue
+        try:
+            # Clean all text
+            clean_title = clean_text(title)
+            clean_site = clean_text(site)
+            summary = summarize_text(full_text)
+            
+            # Format date
+            if pub_date:
+                date_str = pub_date.strftime("%Y-%m-%d %H:%M:%S UTC") if isinstance(pub_date, datetime) else str(pub_date)
+            else:
+                date_str = None
+            
+            # Create article object
+            article_obj = {
+                "title": clean_title,
+                "source": clean_site,
+                "published_date": date_str,
+                "summary": summary,
+                "full_text": clean_text(full_text[:5000])
+            }
+            
+            articles_data.append(article_obj)
+            except Exception as e:
+                print(f"Warning: Failed to add article to JSON: {title[:50]}... Error: {e}")
+                continue
 
     # Save to JSON file
     filename = "crypto_latest_news.json"
@@ -1295,3 +1295,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
