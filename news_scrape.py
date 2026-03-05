@@ -688,76 +688,18 @@ def scrape_theblock(driver):
     soup = BeautifulSoup(html, "html.parser")
     results = []
     
-    articles = soup.find_all('article')
-    print(f"    Found {len(articles)} article tags")
+    # Find articles using the correct selector
+    articles = soup.find_all('article', attrs={'qa-test-id': 'articleCard'})
+    print(f"    Found {len(articles)} article containers")
     
     if len(articles) == 0:
-        headings = soup.find_all(['h2', 'h3'])
-        print(f"    Fallback: Found {len(headings)} h2/h3 tags")
-        
-        processed = 0
-        for i, heading in enumerate(headings):
-            if processed >= 10:
-                break
-                
-            link_tag = heading.find('a', href=True)
-            if not link_tag:
-                continue
-            
-            link = link_tag.get('href', '')
-            if not link:
-                continue
-            
-            if not link.startswith('http'):
-                link = 'https://www.theblock.co' + link
-            
-            title = link_tag.get_text(strip=True)
-            if not title or len(title) < 10:
-                continue
-            
-            print(f"      Article {processed+1}: {title[:50]}...")
-            
-            try:
-                time.sleep(2)  # Be polite
-                # Use Selenium for The Block articles
-                article_html = fetch_html_selenium(link, driver, wait_time=3)
-                if not article_html:
-                    print(f"        ✗ Failed to fetch article")
-                    continue
-                
-                article_soup = BeautifulSoup(article_html, "html.parser")
-                
-                paragraphs = article_soup.find_all("p")
-                text = " ".join(p.get_text(" ", strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 20)
-                
-                if len(text) < 100:
-                    print(f"        ✗ Insufficient content ({len(text)} chars)")
-                    continue
-                
-                date = None
-                time_tag = article_soup.find("time", datetime=True)
-                if time_tag:
-                    date = parse_date(time_tag.get("datetime"))
-                
-                if not date:
-                    date_meta = article_soup.find("meta", {"property": "article:published_time"})
-                    if date_meta:
-                        date = parse_date(date_meta.get("content"))
-                
-                print(f"        Date: {date if date else 'Unknown'}")
-                
-                if date is None or is_recent(date):
-                    results.append((title, "The Block", text, date))
-                    print(f"        ✓ ADDED")
-                    processed += 1
-                else:
-                    print(f"        ✗ Too old")
-                    
-            except Exception as e:
-                print(f"        Error: {e}")
-                continue
-        
-        return results
+        # Fallback: try without qa-test-id
+        articles = soup.find_all('article', class_='flex gap-4 py-4')
+        print(f"    Fallback: Found {len(articles)} articles")
+    
+    if len(articles) == 0:
+        print(f"    ✗ No articles found!")
+        return []
     
     print(f"    Processing {min(len(articles), 10)} articles...")
     processed = 0
@@ -765,25 +707,60 @@ def scrape_theblock(driver):
     for i, article in enumerate(articles):
         if processed >= 10:
             break
-            
-        link_tag = article.find('a', href=True)
-        if not link_tag:
+        
+        # Find the title link (second <a> tag with data-debug="internal-link")
+        title_link = None
+        links = article.find_all('a', attrs={'data-debug': 'internal-link'})
+        if len(links) >= 2:
+            title_link = links[1]  # Second link is the title
+        elif len(links) == 1:
+            title_link = links[0]
+        
+        if not title_link:
             continue
         
-        link = link_tag.get('href', '')
+        link = title_link.get('href', '')
+        if not link:
+            continue
+        
         if not link.startswith('http'):
             link = 'https://www.theblock.co' + link
         
+        # Get title from h2 > span
         h2 = article.find('h2')
         if h2:
-            title = h2.get_text(strip=True)
+            span = h2.find('span', class_='hover:text-brand-primary')
+            if span:
+                title = span.get_text(strip=True)
+            else:
+                title = h2.get_text(strip=True)
         else:
-            title = article.get_text(strip=True)[:100]
+            title = title_link.get_text(strip=True)
         
         if not title or len(title) < 10:
             continue
         
         print(f"      Article {processed+1}: {title[:50]}...")
+        
+        # Get date from the date div - format: "Mar 05, 2026, 7:56AM EST"
+        date_div = article.find('div', class_='text-text-secondary text-2xs')
+        date = None
+        if date_div:
+            date_text = date_div.get_text(strip=True)
+            print(f"        Date text: {date_text}")
+            
+            # Extract date part before the bullet (•)
+            if '•' in date_text:
+                date_part = date_text.split('•')[0].strip()
+                # Remove timezone abbreviations
+                date_part = date_part.replace(' EST', '').replace(' PST', '').replace(' CST', '').replace(' MST', '')
+                # Remove AM/PM time for simpler parsing - just get the date
+                if ',' in date_part:
+                    parts = date_part.split(',')
+                    if len(parts) >= 2:
+                        date_only = f"{parts[0].strip()}, {parts[1].strip()}"
+                        date = parse_date(date_only)
+                        print(f"        Parsed date: {date}")
         
         try:
             time.sleep(2)  # Be polite
@@ -806,17 +783,18 @@ def scrape_theblock(driver):
                 print(f"        ✗ Insufficient content ({len(text)} chars)")
                 continue
             
-            date = None
-            time_tag = article_soup.find("time", datetime=True)
-            if time_tag:
-                date = parse_date(time_tag.get("datetime"))
-            
+            # Get date from article if not found
             if not date:
-                date_meta = article_soup.find("meta", {"property": "article:published_time"})
-                if date_meta:
-                    date = parse_date(date_meta.get("content"))
+                time_tag = article_soup.find("time", datetime=True)
+                if time_tag:
+                    date = parse_date(time_tag.get("datetime"))
+                
+                if not date:
+                    date_meta = article_soup.find("meta", {"property": "article:published_time"})
+                    if date_meta:
+                        date = parse_date(date_meta.get("content"))
             
-            print(f"        Date: {date if date else 'Unknown'}")
+            print(f"        Final date: {date if date else 'Unknown'}")
             
             if date is None or is_recent(date):
                 results.append((title, "The Block", text, date))
@@ -830,7 +808,7 @@ def scrape_theblock(driver):
             continue
     
     return results
-
+    
 def scrape_decrypt(driver):
     url = sites[4][1]  # Decrypt is now index 4
     print(f"    Fetching page with Selenium...")
@@ -937,7 +915,7 @@ def scrape_decrypt(driver):
     return results
 
 def scrape_cointelegraph(driver):
-    url = sites[5][1]  # Cointelegraph is now index 5
+    url = sites[5][1]  # Cointelegraph
     print(f"    Fetching page with Selenium...")
     
     html = fetch_html_selenium(url, driver, wait_time=8)
@@ -947,45 +925,16 @@ def scrape_cointelegraph(driver):
     
     print(f"    ✓ Fetched page: {len(html)} characters")
     soup = BeautifulSoup(html, "html.parser")
-    print(f"    DEBUG: Found {len(soup.find_all('li'))} total <li> tags")
-    print(f"    DEBUG: Found {len(soup.find_all('article'))} total <article> tags")
-    print(f"    DEBUG: Found {len(soup.find_all('a', class_='post-card-inline__title-link'))} title links")
     results = []
     
-    # Find article containers - they use <li data-testid="posts-listing__item">
-    # Try multiple selectors
-    # Find article containers - try multiple approaches
-    articles = []
-
-    # Try approach 1: data-testid attribute
-    articles = soup.find_all('li', {'data-testid': 'posts-listing__item'})
-
-    # Try approach 2: article with class
-    if len(articles) == 0:
-        print(f"    Trying alternative selector: article.post-card-inline")
-        articles = soup.find_all('article', class_='post-card-inline')
-
-    # Try approach 3: just find all article tags
-    if len(articles) == 0:
-        print(f"    Trying alternative selector: all article tags")
-        all_articles = soup.find_all('article')
-        # Filter to only those with post-card in class
-        articles = [a for a in all_articles if a.get('class') and any('post-card' in c for c in a.get('class', []))]
-
-    # Try approach 4: find by title link
-    if len(articles) == 0:
-        print(f"    Trying alternative selector: finding by title links")
-        title_links = soup.find_all('a', class_='post-card-inline__title-link')
-        # Get parent article for each
-        articles = [link.find_parent('article') for link in title_links if link.find_parent('article')]
-        # Remove duplicates
-        articles = list(dict.fromkeys(articles))
-    if len(articles) == 0:
-        articles = soup.find_all('article', class_='post-card-inline')
-    if len(articles) == 0:
-        # Fallback: find all articles
-        articles = soup.find_all('article')
+    # Find articles using correct selector
+    articles = soup.find_all('li', attrs={'data-testid': 'posts-listing__item'})
     print(f"    Found {len(articles)} article containers")
+    
+    if len(articles) == 0:
+        # Fallback
+        articles = soup.find_all('article', class_='post-card-inline')
+        print(f"    Fallback: Found {len(articles)} articles")
     
     if len(articles) == 0:
         print(f"    ✗ No articles found!")
@@ -1023,7 +972,7 @@ def scrape_cointelegraph(driver):
         
         print(f"      Article {processed+1}: {title[:50]}...")
         
-        # Get date from time tag with datetime attribute
+        # Get date from time tag
         time_tag = article.find('time', class_='post-card-inline__date')
         date = None
         if time_tag:
@@ -1034,7 +983,7 @@ def scrape_cointelegraph(driver):
         
         try:
             time.sleep(2)  # Be polite
-            # Use Selenium for Cointelegraph articles
+            # Use Selenium for article
             article_html = fetch_html_selenium(link, driver, wait_time=3)
             if not article_html:
                 print(f"        ✗ Failed to fetch article")
@@ -1042,18 +991,26 @@ def scrape_cointelegraph(driver):
             
             article_soup = BeautifulSoup(article_html, "html.parser")
             
-            # Get better title from article page
+            # Get better title
             h1 = article_soup.find("h1")
             if h1:
                 title = h1.get_text(strip=True)
             
-            # Get article text from paragraphs
+            # Get article text
             paragraphs = article_soup.find_all("p")
             text = " ".join(p.get_text(" ", strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 20)
             
             if len(text) < 100:
                 print(f"        ✗ Insufficient content ({len(text)} chars)")
                 continue
+            
+            # Get date from article if not found
+            if not date:
+                article_time_tag = article_soup.find("time", datetime=True)
+                if article_time_tag:
+                    date = parse_date(article_time_tag.get("datetime"))
+            
+            print(f"        Final date: {date if date else 'Unknown'}")
             
             # Accept if date is None or recent
             if date is None or is_recent(date):
@@ -1070,7 +1027,7 @@ def scrape_cointelegraph(driver):
     return results
 
 def scrape_cryptoslate(driver):
-    url = "https://cryptoslate.com/"
+    url = sites[6][1]  # Adjust index based on your sites list
     print(f"    Fetching page with Selenium...")
     
     html = fetch_html_selenium(url, driver, wait_time=5)
@@ -1082,9 +1039,14 @@ def scrape_cryptoslate(driver):
     soup = BeautifulSoup(html, "html.parser")
     results = []
     
-    # Find article cards
+    # Find articles using the correct selector
     articles = soup.find_all('article', class_='news-card')
     print(f"    Found {len(articles)} article containers")
+    
+    if len(articles) == 0:
+        # Fallback: try without class
+        articles = soup.find_all('article')
+        print(f"    Fallback: Found {len(articles)} articles")
     
     if len(articles) == 0:
         print(f"    ✗ No articles found!")
@@ -1097,8 +1059,11 @@ def scrape_cryptoslate(driver):
         if processed >= 10:
             break
         
-        # Find the article link
+        # Find the main article link
         link_tag = article.find('a', class_='news-card__link')
+        if not link_tag:
+            link_tag = article.find('a', href=True)
+        
         if not link_tag:
             continue
         
@@ -1106,58 +1071,83 @@ def scrape_cryptoslate(driver):
         if not link:
             continue
         
-        # Get title from h2
-        title_tag = article.find('h2', class_='news-card__title')
-        if not title_tag:
-            continue
+        # Get title from h2.news-card__title
+        h2 = article.find('h2', class_='news-card__title')
+        if h2:
+            title = h2.get_text(strip=True)
+        else:
+            title = link_tag.get_text(strip=True)
         
-        title = title_tag.get_text(strip=True)
         if not title or len(title) < 10:
             continue
         
         print(f"      Article {processed+1}: {title[:50]}...")
         
-        # Get date from time tag
-        time_tag = article.find('span', class_='news-card__time')
+        # Get date from span.news-card__time
+        date_span = article.find('span', class_='news-card__time')
         date = None
-        if time_tag:
-            time_text = time_tag.get_text(strip=True)
-            # CryptoSlate uses relative times like "4 hours ago"
-            # For simplicity, we'll accept recent articles
-            print(f"        Date: {time_text}")
+        if date_span:
+            date_text = date_span.get_text(strip=True)
+            print(f"        Date text: {date_text}")
+            
+            # Parse relative time: "52 seconds ago", "2 hours ago", "1 day ago"
+            if 'ago' in date_text.lower():
+                # Calculate the date from relative time
+                now = datetime.now(timezone.utc)
+                
+                if 'second' in date_text or 'minute' in date_text:
+                    date = now  # Recent enough
+                elif 'hour' in date_text:
+                    try:
+                        hours = int(date_text.split()[0]) if date_text.split()[0].isdigit() else 1
+                        date = now - timedelta(hours=hours)
+                    except:
+                        date = now
+                elif 'day' in date_text:
+                    try:
+                        days = int(date_text.split()[0]) if date_text.split()[0].isdigit() else 1
+                        date = now - timedelta(days=days)
+                    except:
+                        date = now
+                
+                print(f"        Parsed date: {date}")
         
         try:
             time.sleep(2)  # Be polite
-            article_html = fetch_html_selenium(link, driver, wait_time=3)
+            article_html = fetch_html_requests(link)
             if not article_html:
                 print(f"        ✗ Failed to fetch article")
                 continue
             
             article_soup = BeautifulSoup(article_html, "html.parser")
             
-            # Get better title from article page
-            h1 = article_soup.find("h1", class_="magazine-hero__title")
+            # Get better title
+            h1 = article_soup.find("h1")
             if h1:
                 title = h1.get_text(strip=True)
             
-            # Get article text from paragraphs in the main content
-            post_div = article_soup.find("div", class_="post")
-            if post_div:
-                paragraphs = post_div.find_all("p")
-                text = " ".join(p.get_text(" ", strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 20)
-            else:
-                # Fallback: get all paragraphs
-                paragraphs = article_soup.find_all("p")
-                text = " ".join(p.get_text(" ", strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 20)
+            # Get article text
+            paragraphs = article_soup.find_all("p")
+            text = " ".join(p.get_text(" ", strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 20)
             
             if len(text) < 100:
                 print(f"        ✗ Insufficient content ({len(text)} chars)")
                 continue
             
-            # Accept recent articles (CryptoSlate uses relative times)
-            results.append((title, "CryptoSlate", text, date))
-            print(f"        ✓ ADDED")
-            processed += 1
+            # Try to get exact date from article if relative time was used
+            if not date:
+                time_tag = article_soup.find("time", datetime=True)
+                if time_tag:
+                    date = parse_date(time_tag.get("datetime"))
+            
+            print(f"        Final date: {date if date else 'Unknown'}")
+            
+            if date is None or is_recent(date):
+                results.append((title, "CryptoSlate", text, date))
+                print(f"        ✓ ADDED")
+                processed += 1
+            else:
+                print(f"        ✗ Too old")
                 
         except Exception as e:
             print(f"        Error: {e}")
@@ -1295,6 +1285,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
