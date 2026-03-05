@@ -37,7 +37,7 @@ sites = [
     ("Crypto.News", "https://crypto.news/news/"),
     ("The Block", "https://www.theblock.co/latest-crypto-news"),
     ("Decrypt", "https://decrypt.co/news"),
-    ("Cointelegraph", "https://cointelegraph.com/news")
+    ("Cointelegraph", "https://cointelegraph.com/news"),
     ("CryptoSlate", "https://cryptoslate.com/")
 ]
 
@@ -1295,5 +1295,6 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
