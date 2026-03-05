@@ -1203,7 +1203,7 @@ def main():
             ("Crypto.News", lambda d: scrape_crypto_news(d)),
             ("The Block", lambda d: scrape_theblock(d)),
             ("Decrypt", lambda d: scrape_decrypt(d)),
-            ("Cointelegraph", lambda d: scrape_cointelegraph(d))
+            ("Cointelegraph", lambda d: scrape_cointelegraph(d)),
             ("CryptoSlate", lambda d: scrape_cryptoslate(d)) 
         ]
         
@@ -1295,6 +1295,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
