@@ -1259,9 +1259,9 @@ def main():
             }
             
             articles_data.append(article_obj)
-            except Exception as e:
-                print(f"Warning: Failed to add article to JSON: {title[:50]}... Error: {e}")
-                continue
+        except Exception as e:
+            print(f"Warning: Failed to add article to JSON: {title[:50]}... Error: {e}")
+            continue
 
     # Save to JSON file
     filename = "crypto_latest_news.json"
@@ -1295,4 +1295,5 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
