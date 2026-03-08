@@ -311,6 +311,8 @@ def update_excel_file(all_articles, filename="titles.xlsx"):
     # Add headers
     sheet['A1'] = 'Title'
     sheet['B1'] = 'Source'
+    sheet['D1'] = 'Summary'
+    sheet['C1'] = 'Published Date'
     
     # Style headers
     header_font = Font(bold=True, size=12)
@@ -325,9 +327,11 @@ def update_excel_file(all_articles, filename="titles.xlsx"):
     sheet.column_dimensions['B'].width = 20
     
     # Add data starting from row 2
-    for idx, (title, source, full_text) in enumerate(all_articles, start=2):
+    for idx, (title, source, full_text, pub_date) in enumerate(all_articles, start=2):
         sheet[f'A{idx}'] = title
         sheet[f'B{idx}'] = source
+        sheet[f'D{idx}'] = summary
+        sheet[f'C{idx}'] = date
     
     # Save the file
     wb.save(filename)
@@ -1297,6 +1301,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
