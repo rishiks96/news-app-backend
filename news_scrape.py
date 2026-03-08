@@ -331,7 +331,7 @@ def update_excel_file(all_articles, filename="titles.xlsx"):
         sheet[f'A{idx}'] = title
         sheet[f'B{idx}'] = source
         sheet[f'D{idx}'] = full_text
-        sheet[f'C{idx}'] = pub_date
+        sheet[f'C{idx}'] = pub_date.strftime("%Y-%m-%d %H:%M:%S") if pub_date else "Unknown"
     
     # Save the file
     wb.save(filename)
@@ -1305,6 +1305,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
