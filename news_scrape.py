@@ -330,8 +330,8 @@ def update_excel_file(all_articles, filename="titles.xlsx"):
     for idx, (title, source, full_text, pub_date) in enumerate(all_articles, start=2):
         sheet[f'A{idx}'] = title
         sheet[f'B{idx}'] = source
-        sheet[f'D{idx}'] = summary
-        sheet[f'C{idx}'] = date
+        sheet[f'D{idx}'] = full_text
+        sheet[f'C{idx}'] = pub_date
     
     # Save the file
     wb.save(filename)
@@ -939,18 +939,22 @@ def scrape_cointelegraph(driver):
     # Find articles using correct selector
     articles = soup.find_all('li', attrs={'data-testid': 'posts-listing__item'})
     print(f"    DEBUG: data-testid li: {len(articles)}")
-
-    if len(articles) == 0:
-        all_articles = soup.find_all('article')
-        all_li = soup.find_all('li')
-        print(f"    DEBUG: All article tags: {len(all_articles)}")
-        print(f"    DEBUG: All li tags: {len(all_li)}")
-    print(f"    Found {len(articles)} article containers")
     
     if len(articles) == 0:
-        # Fallback
+        # Try finding li tags inside specific containers
+        articles = soup.find_all('li', class_=lambda x: x and 'col-span' in str(x))
+        print(f"    DEBUG: col-span li: {len(articles)}")
+    
+    if len(articles) == 0:
+        # Look for article tags with post-card-inline class
         articles = soup.find_all('article', class_='post-card-inline')
-        print(f"    Fallback: Found {len(articles)} articles")
+        print(f"    DEBUG: post-card-inline articles: {len(articles)}")
+    
+    if len(articles) == 0:
+        # Last resort - find all li tags and filter manually
+        all_li = soup.find_all('li')
+        articles = [li for li in all_li if li.find('article', class_='post-card-inline')]
+        print(f"    DEBUG: filtered li with articles inside: {len(articles)}")
     
     if len(articles) == 0:
         print(f"    ✗ No articles found!")
@@ -1301,6 +1305,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
