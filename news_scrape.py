@@ -495,7 +495,7 @@ def scrape_coinpedia(driver):
             
             # For Coinpedia, accept top 10 articles even without date
             if date is None or is_recent(date):
-                results.append((title, "Coinpedia", text))
+                results.append((title, "Coinpedia", text, date))
                 print(f"        ✓ ADDED")
                 processed += 1
             else:
@@ -1297,6 +1297,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
