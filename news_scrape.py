@@ -690,6 +690,11 @@ def scrape_theblock(driver):
     
     # Find articles using the correct selector
     articles = soup.find_all('article', attrs={'qa-test-id': 'articleCard'})
+    print(f"    DEBUG: qa-test-id articles: {len(articles)}")
+
+    if len(articles) == 0:
+        articles = soup.find_all('article')
+        print(f"    DEBUG: All article tags: {len(articles)}")
     print(f"    Found {len(articles)} article containers")
     
     if len(articles) == 0:
@@ -929,6 +934,13 @@ def scrape_cointelegraph(driver):
     
     # Find articles using correct selector
     articles = soup.find_all('li', attrs={'data-testid': 'posts-listing__item'})
+    print(f"    DEBUG: data-testid li: {len(articles)}")
+
+    if len(articles) == 0:
+        all_articles = soup.find_all('article')
+        all_li = soup.find_all('li')
+        print(f"    DEBUG: All article tags: {len(all_articles)}")
+        print(f"    DEBUG: All li tags: {len(all_li)}")
     print(f"    Found {len(articles)} article containers")
     
     if len(articles) == 0:
@@ -1114,7 +1126,7 @@ def scrape_cryptoslate(driver):
         
         try:
             time.sleep(2)  # Be polite
-            article_html = fetch_html_requests(link)
+            article_html = fetch_html_selenium(link, driver, wait_time=3)
             if not article_html:
                 print(f"        ✗ Failed to fetch article")
                 continue
@@ -1285,6 +1297,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
