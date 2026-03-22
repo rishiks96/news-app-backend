@@ -1,7 +1,0 @@
-requests
-beautifulsoup4
-pandas
-selenium
-webdriver_manager
-nltk
-openpyxl
